@@ -1,12 +1,19 @@
 use std::io::prelude::*;
 use std::net::{TcpListener, TcpStream};
 use std::time::Duration;
-use std::{fs, thread};
+use std::{env, fs, thread};
 use web_server::ThreadPool;
 
 fn main() {
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
-    let pool = ThreadPool::new(0).unwrap_or_else(|e| panic!("{}", e.0));
+
+    let threads = if let Some(x) = env::args().nth(1) {
+        x.parse().unwrap()
+    } else {
+        4 as usize
+    };
+
+    let pool = ThreadPool::new(threads).unwrap_or_else(|e| panic!("{}", e.0));
 
     for stream in listener.incoming() {
         let stream = stream.unwrap();
@@ -33,7 +40,7 @@ fn handle_connection(mut stream: TcpStream) {
         ("HTTP/1.1 404 NOT FOUND", "404.html")
     };
 
-    let contents = fs::read_to_string(filename).unwrap();
+    let contents = fs::read_to_string("pages/".to_string() + filename).unwrap();
     let content_len = format!("Content-Length: {}", contents.len());
     let response = format!("{}\r\n{}\r\n\r\n{}", status_line, content_len, contents);
 
