@@ -1,22 +1,29 @@
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 
+enum Message {
+    NewJob(Job),
+    Terminate,
+}
+
+type Job = Box<dyn FnOnce() + Send + 'static>;
+
+#[derive(Debug)]
+pub struct PoolCreationError(pub String);
+
 pub struct ThreadPool {
     workers: Vec<Worker>,
     sender: mpsc::Sender<Message>,
 }
 
 impl ThreadPool {
-    /// Create a new ThreadPool.
-    ///
-    /// The size is the number of threads in the pool.
-    ///
-    /// # Panics
-    ///
-    /// The `new` function will panic if the size is zero.
-    pub fn new(size: usize) -> Self {
-        //TODO:pub fn new(size: usize) -> Result<ThreadPool, PoolCreationError> {
-        assert!(size > 0);
+    pub fn new(size: usize) -> Result<Self, PoolCreationError> {
+        if size <= 0 {
+            // I would rather use assert!(size > 0) and let it panic, since this is a programmers error.
+            return Err(PoolCreationError(
+                "Pool size should be greater than 0".to_string(),
+            ));
+        }
 
         let (sender, receiver) = mpsc::channel();
 
@@ -28,7 +35,7 @@ impl ThreadPool {
             workers.push(Worker::new(id, Arc::clone(&receiver)));
         }
 
-        Self { workers, sender }
+        Ok(Self { workers, sender })
     }
 
     pub fn execute<F>(&self, f: F)
@@ -92,10 +99,3 @@ impl Worker {
         }
     }
 }
-
-enum Message {
-    NewJob(Job),
-    Terminate,
-}
-
-type Job = Box<dyn FnOnce() + Send + 'static>;
