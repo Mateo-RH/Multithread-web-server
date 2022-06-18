@@ -19,7 +19,6 @@ pub struct ThreadPool {
 impl ThreadPool {
     pub fn new(size: usize) -> Result<Self, PoolCreationError> {
         if size <= 0 {
-            // I would rather use assert!(size > 0) and let it panic, since this is a programmers error.
             return Err(PoolCreationError(
                 "Pool size should be greater than 0".to_string(),
             ));
@@ -76,10 +75,11 @@ struct Worker {
 impl Worker {
     fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Message>>>) -> Self {
         let thread = thread::spawn(move || loop {
-            //TODO: expect?
-            // 1.Acquiring a lock might fail if the mutex is in a poisoned state, which can happen if some other thread panicked while holding the lock rather than releasing the lock.
-            // 2.might occur if the thread holding the sending side of the channel has shut down,
-            let message = receiver.lock().unwrap().recv().unwrap();
+            let message = receiver
+                .lock()
+                .expect("A thread has panicked.")
+                .recv()
+                .expect("A receiver has shutted down.");
 
             match message {
                 Message::NewJob(job) => {

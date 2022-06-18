@@ -4,6 +4,10 @@ use std::time::Duration;
 use std::{env, fs, thread};
 use web_server::ThreadPool;
 
+const GET: &[u8; 16] = b"GET / HTTP/1.1\r\n";
+const SLEEP: &[u8; 21] = b"GET /sleep HTTP/1.1\r\n";
+const PANIC: &[u8; 21] = b"GET /panic HTTP/1.1\r\n";
+
 fn main() {
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
 
@@ -28,14 +32,13 @@ fn handle_connection(mut stream: TcpStream) {
     let mut buffer = [0; 1024];
     stream.read(&mut buffer).unwrap();
 
-    let get = b"GET / HTTP/1.1\r\n";
-    let sleep = b"GET /sleep HTTP/1.1\r\n";
-
-    let (status_line, filename) = if buffer.starts_with(get) {
+    let (status_line, filename) = if buffer.starts_with(GET) {
         ("HTTP/1.1 200 OK", "hello.html")
-    } else if buffer.starts_with(sleep) {
+    } else if buffer.starts_with(SLEEP) {
         thread::sleep(Duration::from_secs(5));
         ("HTTP/1.1 200 OK", "hello.html")
+    } else if buffer.starts_with(PANIC) {
+        panic!("uargh la conchalalora!");
     } else {
         ("HTTP/1.1 404 NOT FOUND", "404.html")
     };
